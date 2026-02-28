@@ -500,7 +500,119 @@ Crea un entorno con estas variables:
 
 ---
 
-## 🔧 Tips
+## � Comandos cURL para Postman
+
+Estos comandos están en formato compatible con Postman. Puedes copiarlos y usar el botón "Import" → "Raw text" en Postman.
+
+### 1. Health Check
+```bash
+curl --location 'http://localhost:8080/api/juego/health'
+```
+
+### 2. Crear Juego vs IA
+```bash
+curl --location 'http://localhost:8080/api/juego/nuevo' \
+--header 'Content-Type: application/json' \
+--data '{
+    "nombreJugador1": "Juan",
+    "nombreJugador2": "IA",
+    "tipoJugador2": "IA"
+}'
+```
+
+### 3. Crear Juego vs Humano
+```bash
+curl --location 'http://localhost:8080/api/juego/nuevo' \
+--header 'Content-Type: application/json' \
+--data '{
+    "nombreJugador1": "Juan",
+    "nombreJugador2": "Pedro",
+    "tipoJugador2": "HUMANO"
+}'
+```
+
+### 4. Obtener Estado del Juego
+```bash
+curl --location 'http://localhost:8080/api/juego/{JUEGO_ID}'
+```
+
+### 5. Realizar Movimiento
+```bash
+curl --location 'http://localhost:8080/api/juego/{JUEGO_ID}/movimiento' \
+--header 'Content-Type: application/json' \
+--data '{
+    "row": 2,
+    "col": 3,
+    "expectedVersion": 0
+}'
+```
+
+### 6. Listar Todos los Juegos
+```bash
+curl --location 'http://localhost:8080/api/juego/todos'
+```
+
+### 7. Eliminar Juego
+```bash
+curl --location --request DELETE 'http://localhost:8080/api/juego/{JUEGO_ID}'
+```
+
+### 8. Error 409 - Movimiento con Versión Incorrecta
+```bash
+curl --location 'http://localhost:8080/api/juego/{JUEGO_ID}/movimiento' \
+--header 'Content-Type: application/json' \
+--data '{
+    "row": 3,
+    "col": 2,
+    "expectedVersion": 0
+}'
+```
+
+### 9. Error 400 - Movimiento en Posición Ocupada
+```bash
+curl --location 'http://localhost:8080/api/juego/{JUEGO_ID}/movimiento' \
+--header 'Content-Type: application/json' \
+--data '{
+    "row": 3,
+    "col": 3,
+    "expectedVersion": 0
+}'
+```
+
+### 10. Error 400 - Movimiento Fuera de Rango
+```bash
+curl --location 'http://localhost:8080/api/juego/{JUEGO_ID}/movimiento' \
+--header 'Content-Type: application/json' \
+--data '{
+    "row": 10,
+    "col": 10,
+    "expectedVersion": 0
+}'
+```
+
+### 11. Error 400 - Crear Juego con Datos Inválidos
+```bash
+curl --location 'http://localhost:8080/api/juego/nuevo' \
+--header 'Content-Type: application/json' \
+--data '{
+    "nombreJugador1": "",
+    "nombreJugador2": "IA"
+}'
+```
+
+### 12. Error 404 - Obtener Juego Inexistente
+```bash
+curl --location 'http://localhost:8080/api/juego/id-inexistente'
+```
+
+**📝 Notas:**
+- Reemplaza `{JUEGO_ID}` con el ID real del juego creado
+- Actualiza `expectedVersion` con la versión actual antes de cada movimiento
+- Para importar en Postman: Click en "Import" → "Raw text" → Pega el curl → "Continue"
+
+---
+
+## �🔧 Tips
 
 - **PowerShell**: Usa `| ConvertFrom-Json | ConvertTo-Json -Depth 10` para formatear JSON
 - **Bash**: Usa `| jq '.'` para formatear JSON (requiere instalación de `jq`)
