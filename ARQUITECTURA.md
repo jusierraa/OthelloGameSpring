@@ -369,4 +369,4 @@ Cliente          Controller         Service           Repository        Model
 
 ---
 
-**Proyecto desarrollado por Juan Camilo Sierra**
+**Proyecto desarrollado por Grupo 6**

@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * Clase principal de la aplicación Spring Boot para el juego de Othello.
  * 
- * @author Juan Camilo Sierra
+ * @author Grupo 6
  */
 @SpringBootApplication
 public class OthelloApplication {

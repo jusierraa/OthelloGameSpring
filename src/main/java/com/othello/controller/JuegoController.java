@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * Controlador REST para el juego de Othello.
  * Cumple con SRP: Solo maneja las peticiones HTTP y delega la lógica al servicio.
  * 
- * @author Juan Camilo Sierra
+ * @author Grupo 6
  */
 @RestController
 @RequestMapping("/juego")
