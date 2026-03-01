@@ -513,5 +513,6 @@ Para reportar problemas o sugerencias, por favor contacta al autor.
 ---
 
 **¡Disfruta jugando Othello! 🎮**
-#   O t h e l l o G a m e S p r i n g  
+#   O t h e l l o G a m e S p r i n g 
+ 
  
