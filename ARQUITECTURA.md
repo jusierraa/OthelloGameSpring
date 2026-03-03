@@ -8,20 +8,46 @@
 │              (Postman, cURL, Frontend, Móvil, etc.)                  │
 └───────────────────────────────┬──────────────────────────────────────┘
                                 │
-                                │ HTTP Request (JSON)
+                                │ HTTP Request (JSON + JWT Token)
                                 │
 ┌───────────────────────────────▼──────────────────────────────────────┐
 │                      SPRING BOOT APPLICATION                          │
 │ ┌──────────────────────────────────────────────────────────────────┐ │
+│ │                    CAPA DE SEGURIDAD                             │ │
+│ │  ┌────────────────────────────────────────────────────────┐     │ │
+│ │  │    JwtAuthenticationFilter (OncePerRequestFilter)     │     │ │
+│ │  │  - Intercepta todas las peticiones                    │     │ │
+│ │  │  - Extrae JWT del header Authorization                │     │ │
+│ │  │  - Valida token con JwtTokenProvider                  │     │ │
+│ │  │  - Carga usuario con CustomUserDetailsService         │     │ │
+│ │  │  - Establece SecurityContext                          │     │ │
+│ │  └────────────────────────┬───────────────────────────────┘     │ │
+│ │                            │                                     │ │
+│ │  ┌────────────────────────▼───────────────────────────────┐     │ │
+│ │  │    SecurityConfig                                      │     │ │
+│ │  │  - /auth/** → Público                                  │     │ │
+│ │  │  - /juego/** → Requiere autenticación                 │     │ │
+│ │  │  - CSRF deshabilitado                                  │     │ │
+│ │  │  - Sesiones STATELESS                                  │     │ │
+│ │  └────────────────────────────────────────────────────────┘     │ │
+│ └──────────────────────────┼───────────────────────────────────────┘ │
+│                             │                                         │
+│ ┌──────────────────────────▼───────────────────────────────────────┐ │
 │ │                   CAPA DE PRESENTACIÓN                           │ │
 │ │                    (Controller Layer)                            │ │
 │ │  ┌────────────────────────────────────────────────────────┐     │ │
+│ │  │           AuthController                               │     │ │
+│ │  │  - POST   /auth/register                               │     │ │
+│ │  │  - POST   /auth/login                                  │     │ │
+│ │  │  - GET    /auth/me                                     │     │ │
+│ │  └────────────────────────────────────────────────────────┘     │ │
+│ │  ┌────────────────────────────────────────────────────────┐     │ │
 │ │  │           JuegoController                              │     │ │
-│ │  │  - POST   /nuevo                                       │     │ │
-│ │  │  - GET    /{id}                                        │     │ │
-│ │  │  - POST   /{id}/movimiento                            │     │ │
-│ │  │  - GET    /todos                                       │     │ │
-│ │  │  - DELETE /{id}                                        │     │ │
+│ │  │  - POST   /juego/nuevo                                 │     │ │
+│ │  │  - GET    /juego/{id}                                  │     │ │
+│ │  │  - POST   /juego/{id}/movimiento                       │     │ │
+│ │  │  - GET    /juego/todos                                 │     │ │
+│ │  │  - DELETE /juego/{id}                                  │     │ │
 │ │  └────────────────────────┬───────────────────────────────┘     │ │
 │ └──────────────────────────┼───────────────────────────────────────┘ │
 │                             │                                         │
@@ -30,6 +56,25 @@
 │ ┌──────────────────────────▼───────────────────────────────────────┐ │
 │ │                   CAPA DE NEGOCIO                                │ │
 │ │                    (Service Layer)                               │ │
+│ │  ┌──────────────────────────────────────────────────────┐       │ │
+│ │  │           AuthService                                │       │ │
+│ │  │  - registrarUsuario()                                │       │ │
+│ │  │  - login()                                           │       │ │
+│ │  │  - Genera JWT con JwtTokenProvider                   │       │ │
+│ │  │  - Valida credenciales con AuthenticationManager    │       │ │
+│ │  └──────────────────────────────────────────────────────┘       │ │
+│ │  ┌──────────────────────────────────────────────────────┐       │ │
+│ │  │           CustomUserDetailsService                   │       │ │
+│ │  │  - Implementa UserDetailsService                     │       │ │
+│ │  │  - loadUserByUsername() desde MongoDB                │       │ │
+│ │  └──────────────────────────────────────────────────────┘       │ │
+│ │  ┌──────────────────────────────────────────────────────┐       │ │
+│ │  │           JwtTokenProvider                           │       │ │
+│ │  │  - generateToken(Authentication)                     │       │ │
+│ │  │  - getUsernameFromJWT(String)                        │       │ │
+│ │  │  - validateToken(String)                             │       │ │
+│ │  │  - HMAC-SHA512 con secret de 64 caracteres          │       │ │
+│ │  └──────────────────────────────────────────────────────┘       │ │
 │ │  ┌──────────────────────────────────────────────────────┐       │ │
 │ │  │           IJuegoService (Interface)                  │       │ │
 │ │  │  ▲                                                    │       │ │
@@ -53,33 +98,54 @@
 │ │  │            - ejecutarMovimiento()                     │       │ │
 │ │  │            - obtenerMovimientosValidos()              │       │ │
 │ │  │            - tieneMovimientosValidos()                │       │ │
-│ │  └────────────────────────────────────────────────────┘         │ │
-│ │                                                                  │ │
-│ │  ┌────────────────────────────────────────────────────────┐     │ │
-│ │  │       IJugadorStrategy (Interface)                     │     │ │
-│ │  │  ▲                                ▲                    │     │ │
-│ │  │  │ Implementa                     │ Implementa         │     │ │
-│ │  │  │                                │                    │     │ │
-│ │  │  ├─ JugadorHumanoStrategy         └─ JugadorIAStrategy│     │ │
-│ │  │     (recibe input vía API)          (calcula mejor    │     │ │
-│ │  │                                      movimiento)       │     │ │
+│ │  └───UsuarioRepository extends MongoRepository           │     │ │
+│ │  │  - findByUsername(String)                             │     │ │
+│ │  │  - findByEmail(String)                                │     │ │
+│ │  │  - existsByUsername(String)                           │     │ │
+│ │  │  - existsByEmail(String)                              │     │ │
 │ │  └────────────────────────────────────────────────────────┘     │ │
-│ └──────────────────────────┬─────────────────────────────────────┘ │
-│                             │                                        │
-│                             │ Acceso a datos                         │
-│                             │                                        │
-│ ┌──────────────────────────▼───────────────────────────────────────┐ │
-│ │                    CAPA DE PERSISTENCIA                          │ │
-│ │                    (Repository Layer)                            │ │
 │ │  ┌────────────────────────────────────────────────────────┐     │ │
-│ │  │           JuegoRepository                              │     │ │
-│ │  │  - guardar(Juego)                                      │     │ │
-│ │  │  - buscarPorId(String)                                 │     │ │
-│ │  │  - buscarTodos()                                       │     │ │
-│ │  │  - eliminar(String)                                    │     │ │
-│ │  │  - existe(String)                                      │     │ │
+│ │  │   JuegoRepository extends MongoRepository             │     │ │
+│ │  │  - save(Juego)                                        │     │ │
+│ │  │  - findById(String)                                   │     │ │
+│ │  │  - findAll()                                          │     │ │
+│ │  │  - deleteById(String)                                 │     │ │
+│ │  │  - existsById(String)                                 │     │ │
+│ │  │  - findByEstado(EstadoJuego)                          │     │ │
+│ │  │  - findByFechaCreacionAfter(LocalDateTime)           │     │ │
 │ │  └────────────────────────┬───────────────────────────────┘     │ │
 │ └──────────────────────────┼───────────────────────────────────────┘ │
+│                             │                                         │
+│                             │ MongoDB CRUD                            │
+│                             │                                         │
+│ ┌──────────────────────────▼───────────────────────────────────────┐ │
+│ │                      CAPA DE DOMINIO                             │ │
+│ │                      (Model Layer)                               │ │
+│ │  ┌─────────────────────────────────────────────────────┐        │ │
+│ │  │  Entidades MongoDB:                                 │        │ │
+│ │  │  • Usuario (@Document "usuarios")                   │        │ │
+│ │  │    - id, username, email, password (BCrypt)         │        │ │
+│ │  │    - roles, partidasJugadas/Ganadas/Perdidas        │        │ │
+│ │  │  • Juego (@Document "juegos")                       │        │ │
+│ │  │    - id, jugadores, tablero, estado                 │        │ │
+│ │  │  • Tablero (matriz 8x8, tamano)                    │        │ │
+│ │  │  • Jugador (nombre, color, tipo, puntaje)          │        │ │
+│ │  │  • Ficha (color)                                    │        │ │
+│ │  │  • Posicion (fila, columna)                         │        │ │
+│ │  │                                                     │        │ │
+│ │  │  Enums:                                             │        │ │
+│ │  │  • ColorFicha (X, O, VACIO)                        │        │ │
+│ │  │  • TipoJugador (HUMANO, IA)                        │        │ │
+│ │  │  • EstadoJuego (EN_CURSO, FINALIZADO, EMPATE)      │        │ │
+│ │  └─────────────────────────────────────────────────────┘        │ │
+│ └──────────────────────────┬───────────────────────────────────────┘ │
+│                              │                                        │
+│ ┌────────────────────────────▼─────────────────────────────────────┐ │
+│ │                    BASE DE DATOS                                 │ │
+│ │               MongoDB Atlas / MongoDB Local                      │ │
+│ │  Colecciones:                                                    │ │
+│ │  • usuarios - Almacena usuarios registrados                      │ │
+│ │  • juegos - Almacena partidas de Othello                 ─────────┘ │
 │                             │                                         │
 │                             │ CRUD                                    │
 │                             │                                         │
@@ -89,8 +155,9 @@
 │ │  ┌─────────────────────────────────────────────────────┐        │ │
 │ │  │  Entidades:                                         │        │ │
 │ │  │  • Juego (id, jugadores, tablero, estado)          │        │ │
-│ │  │  • Tablero (matriz 8x8, tamano)                    │        │ │
-│ │  │  • Jugador (nombre, color, tipo, puntaje)          │        │ │
+│ │  │ SecurityConfig (Spring Security + JWT)                        │ │
+│ │  - CorsConfig (permite peticiones desde cualquier origen)        │ │
+│ │  - application.yml (MongoDB URI, JWT secret, puerto, logging)  │ │
 │ │  │  • Ficha (color)                                    │        │ │
 │ │  │  • Posicion (fila, columna)                         │        │ │
 │ │  │                                                     │        │ │
@@ -102,29 +169,96 @@
 │ └──────────────────────────────────────────────────────────────────┘ │
 │                                                                       │
 │ ┌──────────────────────────────────────────────────────────────────┐ │
-│ │                 MANEJO DE EXCEPCIONES                            │ │
-│ │  - GlobalExceptionHandler (@RestControllerAdvice)                │ │
-│ │  - JuegoNoEncontradoException                                    │ │
-│ │  - MovimientoInvalidoException                                   │ │
-│ └──────────────────────────────────────────────────────────────────┘ │
-│                                                                       │
-│ ┌──────────────────────────────────────────────────────────────────┐ │
-│ │                    CONFIGURACIÓN                                 │ │
-│ │  - CorsConfig (permite peticiones desde cualquier origen)        │ │
-│ │  - application.yml (puerto, logging, etc.)                       │ │
-│ └──────────────────────────────────────────────────────────────────┘ │
-└───────────────────────────────────────────────────────────────────────┘
-                                │
-                                │ HTTP Response (JSON)
-                                │
-┌───────────────────────────────▼──────────────────────────────────────┐
-│                          CLIENTE HTTP                                 │
-└──────────────────────────────────────────────────────────────────────┘
+│ │         Autenticación
+
+### Registro de Usuario
+
+```
+1. CLIENTE envía POST /api/auth/register
+   {username, email, password}
+   ↓
+2. AuthController recibe la petición
+   • Valida el DTO (@Valid RegisterRequestDTO)
+   ↓
+3. AuthController delega a AuthService
+   • authService.registrarUsuario(registerDTO)
+   ↓
+4. AuthService ejecuta:
+   • Verifica que username no exista (UsuarioRepository)
+   • Verifica que email no exista (UsuarioRepository)
+   • Hashea password con BCryptPasswordEncoder
+   • Crea objeto Usuario con rol "ROLE_USER"
+   • Guarda en MongoDB (usuarioRepository.save())
+   • Genera JWT token (JwtTokenProvider)
+   ↓
+5. Retorna AuthResponseDTO con token, username, email, roles
+   ↓
+6. CLIENTE guarda el token para futuras peticiones
+```
+
+### Inicio de Sesión
+
+```
+1. CLIENTE envía POST /api/auth/login
+   {username, password}
+   ↓
+2. AuthController recibe la petición
+   • Valida el DTO (@Valid LoginRequestDTO)
+   ↓
+3. AuthController delega a AuthService
+   • authService.login(loginDTO)
+   ↓
+4. AuthService ejecuta:
+   • Crea UsernamePasswordAuthenticationToken
+   • AuthenticationManager.authenticate() valida credenciales
+   • CustomUserDetailsService carga usuario desde MongoDB
+   • BCrypt compara password hasheado
+   • Si válido, actualiza ultimoAcceso del usuario
+   • Genera JWT token (JwtTokenProvider)
+   ↓
+5. Retorna AuthResponseDTO con token
+   ↓
+6. CLIENTE guarda el token para futuras peticiones
 ```
 
 ---
 
-## Flujo de una Petición Completa
+## Flujo de una Petición Protegida
+
+### Ejemplo: Crear un Nuevo Juego
+
+```
+1. CLIENTE envía POST /api/juego/nuevo
+   Header: Authorization: Bearer eyJhbGciOiJIUzUxMiJ9...
+   ↓
+2. JwtAuthenticationFilter intercepta la petición
+   • Extrae token del header Authorization
+   • JwtTokenProvider.validateToken(token)
+   • JwtTokenProvider.getUsernameFromJWT(token)
+   • CustomUserDetailsService.loadUserByUsername(username)
+   • Crea Authentication y lo establece en SecurityContext
+   ↓
+3. SecurityConfig verifica autorización
+   • /juego/** requiere autenticación → OK
+   • Permite continuar la petición
+   ↓
+4. JuegoController recibe la petición
+   • Valida el DTO (@Valid CrearJuegoDTO)
+   ↓
+5. JuegoController delega a IJuegoService
+   • juegoService.crearJuego(crearJuegoDTO)
+   ↓
+6. JuegoServiceImpl ejecuta la lógica:
+   • Crea los objetos Jugador
+   • Crea el objeto Juego
+   • Inicializa el Tablero
+   • Actualiza puntajes
+   ↓
+7. JuegoServiceImpl usa JuegoRepository
+   • juegoRepository.save(juego)
+   ↓
+8. Spring Data MongoDB persiste en MongoDB Atlas/Local
+   • Colección: "juegos"
 
 ### Ejemplo: Crear un Nuevo Juego
 

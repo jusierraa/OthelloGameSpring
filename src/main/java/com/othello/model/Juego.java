@@ -1,5 +1,7 @@
 package com.othello.model;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -7,7 +9,9 @@ import java.util.UUID;
  * Clase que representa una partida de Othello.
  * Cumple con SRP: Solo almacena el estado de una partida.
  */
+@Document(collection = "juegos")
 public class Juego {
+    @Id
     private String id;
     private Jugador jugador1;
     private Jugador jugador2;

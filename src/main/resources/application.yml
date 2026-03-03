@@ -7,6 +7,13 @@ spring:
   application:
     name: othello-backend
   
+  # Configuración de MongoDB
+  data:
+    mongodb:
+      uri: mongodb+srv://othello:othello123@cluster0.mongodb.net/othello_db?retryWrites=true&w=majority
+      # Para MongoDB local, usar:
+      # uri: mongodb://localhost:27017/othello_db
+  
   # Configuración de serialización JSON
   jackson:
     serialization:
@@ -14,11 +21,17 @@ spring:
       write-dates-as-timestamps: false
     default-property-inclusion: non_null
 
+# Configuración de JWT
+jwt:
+  secret: 5Np8Y2v4r7xAz3Bc6Df9Gh2Jk5Mn8Pq1Rs4Tv7Wx0Ya3Zb6Ce9Df2Gh5Jk8Mn1Pq4R
+  expiration: 86400000  # 24 horas en milisegundos
+
 # Configuración de logging
 logging:
   level:
     root: INFO
     com.othello: DEBUG
+    org.springframework.data.mongodb: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 

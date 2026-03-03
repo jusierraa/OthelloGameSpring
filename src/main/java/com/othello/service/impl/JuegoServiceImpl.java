@@ -60,7 +60,7 @@ public class JuegoServiceImpl implements IJuegoService {
         juego.actualizarPuntajes();
 
         // Guardar en repositorio
-        juegoRepository.guardar(juego);
+        juegoRepository.save(juego);
 
         logger.info("Juego creado con ID: {}", juego.getId());
         return convertirADTO(juego);
@@ -68,14 +68,14 @@ public class JuegoServiceImpl implements IJuegoService {
 
     @Override
     public JuegoDTO obtenerJuego(String juegoId) {
-        Juego juego = juegoRepository.buscarPorId(juegoId)
+        Juego juego = juegoRepository.findById(juegoId)
             .orElseThrow(() -> new JuegoNoEncontradoException("Juego no encontrado con ID: " + juegoId));
         return convertirADTO(juego);
     }
 
     @Override
     public JuegoDTO realizarMovimiento(String juegoId, MovimientoDTO movimiento) {
-        Juego juego = juegoRepository.buscarPorId(juegoId)
+        Juego juego = juegoRepository.findById(juegoId)
             .orElseThrow(() -> new JuegoNoEncontradoException("Juego no encontrado con ID: " + juegoId));
 
         // Validar versión (concurrencia optimista)
@@ -142,24 +142,24 @@ public class JuegoServiceImpl implements IJuegoService {
         }
 
         // Guardar cambios
-        juegoRepository.guardar(juego);
+        juegoRepository.save(juego);
 
         return convertirADTO(juego);
     }
 
     @Override
     public List<JuegoDTO> obtenerTodosLosJuegos() {
-        return juegoRepository.buscarTodos().stream()
+        return juegoRepository.findAll().stream()
             .map(this::convertirADTO)
             .collect(Collectors.toList());
     }
 
     @Override
     public void eliminarJuego(String juegoId) {
-        if (!juegoRepository.existe(juegoId)) {
+        if (!juegoRepository.existsById(juegoId)) {
             throw new JuegoNoEncontradoException("Juego no encontrado con ID: " + juegoId);
         }
-        juegoRepository.eliminar(juegoId);
+        juegoRepository.deleteById(juegoId);
         logger.info("Juego eliminado: {}", juegoId);
     }
 

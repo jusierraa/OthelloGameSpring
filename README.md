@@ -136,6 +136,11 @@ private ITableroService tableroService;
 | **Java** | 17 | Lenguaje de programación |
 | **Spring Boot** | 3.2.0 | Framework backend |
 | **Spring Web** | 3.2.0 | Creación de API REST |
+| **Spring Data MongoDB** | 3.2.0 | Persistencia en MongoDB |
+| **Spring Security** | 3.2.0 | Autenticación y autorización |
+| **JWT (JJWT)** | 0.11.5 | Tokens de autenticación |
+| **MongoDB** | Atlas/Local | Base de datos NoSQL |
+| **BCrypt** | - | Hash de contraseñas |
 | **Spring Validation** | 3.2.0 | Validación de datos |
 | **Lombok** | - | Reducción de boilerplate |
 | **Maven** | 3.x | Gestión de dependencias |
@@ -149,22 +154,68 @@ private ITableroService tableroService;
 
 - Java 17 o superior
 - Maven 3.6 o superior
+- MongoDB (Atlas Cloud o Local)
+  - **Opción 1 - MongoDB Atlas** (Recomendado): Cuenta gratuita en [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
+  - **Opción 2 - MongoDB Local**: Instalar [MongoDB Community Edition](https://www.mongodb.com/try/download/community)
+
+### **Configuración de MongoDB**
+
+#### Opción 1: MongoDB Atlas (Cloud - Recomendado)
+1. Crea una cuenta gratuita en MongoDB Atlas
+2. Crea un cluster gratuito (M0)
+3. Configura acceso de red (allow from anywhere: 0.0.0.0/0)
+4. Crea usuario de base de datos (ej: `othello` / `othello123`)
+5. La URI ya está configurada en `application.yml`:
+```yaml
+mongodb+srv://othello:othello123@cluster0.mongodb.net/othello_db
+```
+
+#### Opción 2: MongoDB Local
+1. Instala MongoDB Community Edition
+2. Inicia el servicio:
+```bash
+# Windows
+net start MongoDB
+
+# Linux/Mac
+sudo systemctl start mongod
+```
+3. Actualiza `application.yml`:
+```yaml
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/othello_db
+```
 
 ### **Pasos**
 
 1. **Clonar el repositorio**
 ```bash
 git clone <url-del-repositorio>
-cd othello-backend
-```
+cd othAutenticación** - Base URL: `/api/auth`
 
-2. **Compilar el proyecto**
-```bash
-mvn clean install
-```
+| Método | Endpoint | Descripción | Auth Requerida |
+|--------|----------|-------------|----------------|
+| `POST` | `/register` | Registrar nuevo usuario | No |
+| `POST` | `/login` | Iniciar sesión y obtener JWT | No |
+| `GET` | `/me` | Obtener info del usuario actual | Sí |
 
-3. **Ejecutar la aplicación**
-```bash
+### **Juegos** - Base URL: `/api/juego`
+
+| Método | Endpoint | Descripción | Auth Requerida |
+|--------|----------|-------------|----------------|
+| `GET` | `/health` | Verificar salud del servicio | Sí |
+| `POST` | `/nuevo` | Crear nueva partida | Sí |
+| `GET` | `/{id}` | Obtener estado de un juego | Sí |
+| `POST` | `/{id}/movimiento` | Realizar un movimiento | Sí |
+| `GET` | `/todos` | Listar todos los juegos | Sí |
+| `DELETE` | `/{id}` | Eliminar un juego | Sí |
+
+**Nota**: Los endpoints que requieren autenticación necesitan el header:
+```
+Authorization: Bearer {jwt_token}
+```
 mvn spring-boot:run
 ```
 
@@ -190,12 +241,62 @@ La API estará disponible en: **`http://localhost:8080/api`**
 
 ### **Base URL**: `/api/juego`
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| `GET` | `/health` | Verificar salud del servicio |
-| `POST` | `/nuevo` | Crear nueva partida |
-| `GET` | `/{id}` | Obtener estado de un juego |
-| `POST` | `/{id}/movimiento` | Realizar un movimiento |
+| Méto🔐 1. Registrar Usuario**
+
+**Request:**
+```http
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "username": "juan",
+  "email": "juan@example.com",
+  "password": "123456"
+}
+```
+
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqdWFuIiwiaWF0IjoxNzA...",
+  "username": "juan",
+  "email": "juan@example.com",
+  "roles": ["ROLE_USER"]
+}
+```
+
+### **🔓 2. Iniciar Sesión**
+
+**Request:**
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "username": "juan",
+  "password": "123456"
+}
+```
+
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqdWFuIiwiaWF0IjoxNzA...",
+  "username": "juan",
+  "email": "juan@example.com",
+  "roles": ["ROLE_USER"]
+}
+```
+
+**⚠️ Importante**: Guarda el `token` y úsalo en todos los endpoints protegidos.
+
+### **3. Crear un Nuevo Juego**
+
+**Request:**
+```http
+POST /api/juego/nuevo
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9...| Realizar un movimiento |
 | `GET` | `/todos` | Listar todos los juegos |
 | `DELETE` | `/{id}` | Eliminar un juego |
 
@@ -203,12 +304,13 @@ La API estará disponible en: **`http://localhost:8080/api`**
 
 ## 📚 Ejemplos de Uso
 
-### **1. Crear un Nuevo Juego**
+### **4. Realizar un Movimiento**
 
 **Request:**
 ```http
-POST /api/juego/nuevo
+POST /api/juego/{id}/movimiento
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9...
 
 {
   "nombreJugador1": "Stark",
@@ -247,11 +349,12 @@ Content-Type: application/json
         ["-","-","-","-","-","-","-","-"],
         ["-","-","-","-","-","-","-","-"],
         ["-","-","-","-","-","-","-","-"]
-      ],
-      "tamano": 8
-    },
-    "estado": "EN_CURSO",
-    "puntajes": {
+      5. Obtener Estado del Juego**
+
+**Request:**
+```http
+GET /api/juego/{id}
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9...
       "Stark": 2,
       "Ultron": 2
     },
@@ -262,11 +365,12 @@ Content-Type: application/json
       {"fila": 4, "columna": 5},
       {"fila": 5, "columna": 4}
     ]
-  }
-}
-```
+  }6. Listar Todos los Juegos**
 
-### **2. Realizar un Movimiento**
+**Request:**
+```http
+GET /api/juego/todos
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9... Movimiento**
 
 **Request:**
 ```http
@@ -327,11 +431,12 @@ GET /api/juego/todos
   "exito": true,
   "mensaje": "Juegos obtenidos exitosamente",
   "data": [ ... ]
-}
-```
+}7. Eliminar un Juego**
 
-### **5. Eliminar un Juego**
-
+**Request:**
+```http
+DELETE /api/juego/{id}
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9...
 **Request:**
 ```http
 DELETE /api/juego/{id}
