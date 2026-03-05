@@ -5,11 +5,13 @@ import com.othello.exception.JuegoNoEncontradoException;
 import com.othello.exception.MovimientoInvalidoException;
 import com.othello.model.*;
 import com.othello.repository.JuegoRepository;
+import com.othello.repository.UsuarioRepository;
 import com.othello.service.interfaces.IJuegoService;
 import com.othello.service.interfaces.IJugadorStrategy;
 import com.othello.service.interfaces.ITableroService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,19 +27,22 @@ public class JuegoServiceImpl implements IJuegoService {
     private static final Logger logger = LoggerFactory.getLogger(JuegoServiceImpl.class);
 
     private final JuegoRepository juegoRepository;
+    private final UsuarioRepository usuarioRepository;
     private final ITableroService tableroService;
     private final IJugadorStrategy jugadorIAStrategy;
 
     public JuegoServiceImpl(JuegoRepository juegoRepository, 
+                           UsuarioRepository usuarioRepository,
                            ITableroService tableroService,
                            JugadorIAStrategy jugadorIAStrategy) {
         this.juegoRepository = juegoRepository;
+        this.usuarioRepository = usuarioRepository;
         this.tableroService = tableroService;
         this.jugadorIAStrategy = jugadorIAStrategy;
     }
 
     @Override
-    public JuegoDTO crearJuego(CrearJuegoDTO crearJuegoDTO) {
+    public JuegoDTO crearJuego(CrearJuegoDTO crearJuegoDTO, String ownerUsername) {
         logger.info("Creando nuevo juego: {} vs {}", 
                    crearJuegoDTO.getNombreJugador1(), 
                    crearJuegoDTO.getNombreJugador2());
@@ -57,6 +62,7 @@ public class JuegoServiceImpl implements IJuegoService {
 
         // Crear juego
         Juego juego = new Juego(jugador1, jugador2);
+        juego.setOwnerUsername(ownerUsername);
         juego.actualizarPuntajes();
 
         // Guardar en repositorio
@@ -67,16 +73,14 @@ public class JuegoServiceImpl implements IJuegoService {
     }
 
     @Override
-    public JuegoDTO obtenerJuego(String juegoId) {
-        Juego juego = juegoRepository.findById(juegoId)
-            .orElseThrow(() -> new JuegoNoEncontradoException("Juego no encontrado con ID: " + juegoId));
+    public JuegoDTO obtenerJuego(String juegoId, String ownerUsername) {
+        Juego juego = obtenerJuegoAutorizado(juegoId, ownerUsername);
         return convertirADTO(juego);
     }
 
     @Override
-    public JuegoDTO realizarMovimiento(String juegoId, MovimientoDTO movimiento) {
-        Juego juego = juegoRepository.findById(juegoId)
-            .orElseThrow(() -> new JuegoNoEncontradoException("Juego no encontrado con ID: " + juegoId));
+    public JuegoDTO realizarMovimiento(String juegoId, MovimientoDTO movimiento, String ownerUsername) {
+        Juego juego = obtenerJuegoAutorizado(juegoId, ownerUsername);
 
         // Validar versión (concurrencia optimista)
         if (!juego.getVersion().equals(movimiento.getExpectedVersion())) {
@@ -118,6 +122,7 @@ public class JuegoServiceImpl implements IJuegoService {
         // Actualizar puntajes y reset passCount ya que hubo movimiento válido
         juego.actualizarPuntajes();
         juego.resetPassCount();
+        juego.setMensajeEstado("Turn: " + obtenerEtiquetaColor(juego.getJugadorContrario().getColor()) + ".");
 
         // Verificar si el siguiente jugador tiene movimientos
         juego.cambiarTurno();
@@ -131,8 +136,15 @@ public class JuegoServiceImpl implements IJuegoService {
                 juego.finalizarJuego();
                 logger.info("Juego {} finalizado: {}", juegoId, juego.getMensajeEstado());
             } else {
-                juego.setMensajeEstado("El oponente no tiene movimientos válidos. Turno repetido.");
+                juego.setMensajeEstado(
+                    obtenerEtiquetaColor(juego.getJugadorContrario().getColor()) +
+                    " has no valid moves. " +
+                    obtenerEtiquetaColor(juego.getTurnoActual().getColor()) +
+                    " plays again."
+                );
             }
+        } else {
+            juego.setMensajeEstado("Turn: " + obtenerEtiquetaColor(juego.getTurnoActual().getColor()) + ".");
         }
 
         // Si es turno de la IA y el juego sigue en curso, procesar movimiento de IA
@@ -141,6 +153,8 @@ public class JuegoServiceImpl implements IJuegoService {
             procesarMovimientoIA(juego);
         }
 
+        registrarResultadoSiAplica(juego);
+
         // Guardar cambios
         juegoRepository.save(juego);
 
@@ -148,18 +162,16 @@ public class JuegoServiceImpl implements IJuegoService {
     }
 
     @Override
-    public List<JuegoDTO> obtenerTodosLosJuegos() {
-        return juegoRepository.findAll().stream()
+    public List<JuegoDTO> obtenerTodosLosJuegos(String ownerUsername) {
+        return juegoRepository.findByOwnerUsernameOrderByFechaUltimoMovimientoDesc(ownerUsername).stream()
             .map(this::convertirADTO)
             .collect(Collectors.toList());
     }
 
     @Override
-    public void eliminarJuego(String juegoId) {
-        if (!juegoRepository.existsById(juegoId)) {
-            throw new JuegoNoEncontradoException("Juego no encontrado con ID: " + juegoId);
-        }
-        juegoRepository.deleteById(juegoId);
+    public void eliminarJuego(String juegoId, String ownerUsername) {
+        Juego juego = obtenerJuegoAutorizado(juegoId, ownerUsername);
+        juegoRepository.deleteById(juego.getId());
         logger.info("Juego eliminado: {}", juegoId);
     }
 
@@ -205,38 +217,96 @@ public class JuegoServiceImpl implements IJuegoService {
      * Procesa el movimiento automático de la IA.
      */
     private void procesarMovimientoIA(Juego juego) {
+        String nombreIA = juego.getTurnoActual().getNombre();
         Posicion movimientoIA = jugadorIAStrategy.calcularMovimiento(
             juego.getTablero(), 
             juego.getTurnoActual().getColor()
         );
 
-        if (movimientoIA != null) {
-            logger.info("IA realizando movimiento: [{},{}]", 
-                       movimientoIA.getRow(), movimientoIA.getCol());
-
-            tableroService.ejecutarMovimiento(
-                juego.getTablero(), 
-                movimientoIA.getRow(), 
-                movimientoIA.getCol(), 
-                juego.getTurnoActual().getColor()
-            );
-
-            juego.actualizarPuntajes();
+        if (movimientoIA == null) {
             juego.cambiarTurno();
+            juego.incrementarPassCount();
 
-            // Verificar si el siguiente jugador tiene movimientos
+            if (!tableroService.tieneMovimientosValidos(juego.getTablero(), juego.getTurnoActual().getColor())) {
+                juego.finalizarJuego();
+            } else {
+                juego.setMensajeEstado(nombreIA + " has no valid moves. Turn: " +
+                    obtenerEtiquetaColor(juego.getTurnoActual().getColor()) + ".");
+            }
+            return;
+        }
+
+        logger.info("IA realizando movimiento: [{},{}]", 
+                   movimientoIA.getRow(), movimientoIA.getCol());
+
+        tableroService.ejecutarMovimiento(
+            juego.getTablero(), 
+            movimientoIA.getRow(), 
+            movimientoIA.getCol(), 
+            juego.getTurnoActual().getColor()
+        );
+
+        juego.actualizarPuntajes();
+        juego.resetPassCount();
+        juego.cambiarTurno();
+
+        // Verificar si el siguiente jugador tiene movimientos
+        if (!tableroService.tieneMovimientosValidos(
+                juego.getTablero(), 
+                juego.getTurnoActual().getColor())) {
+            juego.cambiarTurno();
+            juego.incrementarPassCount();
+
             if (!tableroService.tieneMovimientosValidos(
                     juego.getTablero(), 
                     juego.getTurnoActual().getColor())) {
-                juego.cambiarTurno();
-                
-                if (!tableroService.tieneMovimientosValidos(
-                        juego.getTablero(), 
-                        juego.getTurnoActual().getColor())) {
-                    juego.finalizarJuego();
-                }
+                juego.finalizarJuego();
+            } else {
+                juego.setMensajeEstado(
+                    obtenerEtiquetaColor(juego.getJugadorContrario().getColor()) +
+                    " has no valid moves. " +
+                    obtenerEtiquetaColor(juego.getTurnoActual().getColor()) +
+                    " plays again."
+                );
             }
+        } else {
+            juego.setMensajeEstado(nombreIA + " moved. Turn: " +
+                obtenerEtiquetaColor(juego.getTurnoActual().getColor()) + ".");
         }
+    }
+
+    private Juego obtenerJuegoAutorizado(String juegoId, String ownerUsername) {
+        Juego juego = juegoRepository.findById(juegoId)
+            .orElseThrow(() -> new JuegoNoEncontradoException("Juego no encontrado con ID: " + juegoId));
+
+        if (juego.getOwnerUsername() == null || !juego.getOwnerUsername().equals(ownerUsername)) {
+            throw new AccessDeniedException("No tienes permiso para acceder a este juego");
+        }
+
+        return juego;
+    }
+
+    private void registrarResultadoSiAplica(Juego juego) {
+        if (juego.getEstado() == EstadoJuego.ACTIVE || juego.getJugador2().getTipo() != TipoJugador.IA) {
+            return;
+        }
+
+        Usuario usuario = usuarioRepository.findByUsername(juego.getOwnerUsername())
+            .orElseThrow(() -> new AccessDeniedException("Usuario propietario no encontrado"));
+
+        if (juego.getEstado() == EstadoJuego.DRAW) {
+            usuario.registrarEmpate();
+        } else if (juego.getWinner() != null && juego.getWinner().equals(juego.getJugador1().getNombre())) {
+            usuario.registrarVictoria();
+        } else {
+            usuario.registrarDerrota();
+        }
+
+        usuarioRepository.save(usuario);
+    }
+
+    private String obtenerEtiquetaColor(ColorFicha color) {
+        return color == ColorFicha.B ? "Black" : "White";
     }
 
     private JugadorDTO convertirJugadorADTO(Jugador jugador) {

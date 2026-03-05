@@ -34,6 +34,7 @@ public class Usuario {
     private Integer partidasJugadas = 0;
     private Integer partidasGanadas = 0;
     private Integer partidasPerdidas = 0;
+    private Integer partidasEmpatadas = 0;
     
     private boolean activo = true;
 
@@ -131,6 +132,14 @@ public class Usuario {
         this.partidasPerdidas = partidasPerdidas;
     }
 
+    public Integer getPartidasEmpatadas() {
+        return partidasEmpatadas;
+    }
+
+    public void setPartidasEmpatadas(Integer partidasEmpatadas) {
+        this.partidasEmpatadas = partidasEmpatadas;
+    }
+
     public boolean isActivo() {
         return activo;
     }
@@ -141,5 +150,24 @@ public class Usuario {
 
     public void agregarRole(String role) {
         this.roles.add(role);
+    }
+
+    public void registrarVictoria() {
+        this.partidasJugadas = valorSeguro(partidasJugadas) + 1;
+        this.partidasGanadas = valorSeguro(partidasGanadas) + 1;
+    }
+
+    public void registrarDerrota() {
+        this.partidasJugadas = valorSeguro(partidasJugadas) + 1;
+        this.partidasPerdidas = valorSeguro(partidasPerdidas) + 1;
+    }
+
+    public void registrarEmpate() {
+        this.partidasJugadas = valorSeguro(partidasJugadas) + 1;
+        this.partidasEmpatadas = valorSeguro(partidasEmpatadas) + 1;
+    }
+
+    private int valorSeguro(Integer valor) {
+        return valor == null ? 0 : valor;
     }
 }

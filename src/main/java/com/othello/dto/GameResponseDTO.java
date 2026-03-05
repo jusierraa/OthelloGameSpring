@@ -1,8 +1,5 @@
 package com.othello.dto;
 
-import com.othello.model.ColorFicha;
-import com.othello.model.EstadoJuego;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -40,13 +37,15 @@ public class GameResponseDTO {
         private Map<String, Integer> score;
         private List<PosicionDTO> validMoves;
         private Long version;
+        private String message;
+        private Boolean isGameOver;
 
         public GameDTO() {
         }
 
         public GameDTO(String id, String[][] board, String currentPlayer, String status,
                        Integer passCount, String winner, Map<String, Integer> score,
-                       List<PosicionDTO> validMoves, Long version) {
+                       List<PosicionDTO> validMoves, Long version, String message, Boolean isGameOver) {
             this.id = id;
             this.board = board;
             this.currentPlayer = currentPlayer;
@@ -56,6 +55,8 @@ public class GameResponseDTO {
             this.score = score;
             this.validMoves = validMoves;
             this.version = version;
+            this.message = message;
+            this.isGameOver = isGameOver;
         }
 
         public String getId() {
@@ -128,6 +129,22 @@ public class GameResponseDTO {
 
         public void setVersion(Long version) {
             this.version = version;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public Boolean getIsGameOver() {
+            return isGameOver;
+        }
+
+        public void setIsGameOver(Boolean gameOver) {
+            isGameOver = gameOver;
         }
     }
 }

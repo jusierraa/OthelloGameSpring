@@ -3,6 +3,7 @@ package com.othello.exception;
 import com.othello.dto.RespuestaDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -38,6 +39,12 @@ public class GlobalExceptionHandler {
         response.put("expectedVersion", ex.getExpectedVersion());
         response.put("currentVersion", ex.getCurrentVersion());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<RespuestaDTO> handleAccessDenied(AccessDeniedException ex) {
+        RespuestaDTO respuesta = new RespuestaDTO(false, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(respuesta);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -23,4 +23,9 @@ public interface JuegoRepository extends MongoRepository<Juego, String> {
      * Busca juegos creados después de una fecha.
      */
     List<Juego> findByFechaCreacionAfter(LocalDateTime fecha);
+
+    /**
+     * Busca juegos pertenecientes a un usuario.
+     */
+    List<Juego> findByOwnerUsernameOrderByFechaUltimoMovimientoDesc(String ownerUsername);
 }

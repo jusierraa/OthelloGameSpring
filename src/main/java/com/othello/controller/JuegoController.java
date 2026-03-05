@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -38,9 +39,11 @@ public class JuegoController {
      * POST /api/juego/nuevo
      */
     @PostMapping("/nuevo")
-    public ResponseEntity<GameResponseDTO> crearJuego(@Valid @RequestBody CrearJuegoDTO crearJuegoDTO) {
+    public ResponseEntity<GameResponseDTO> crearJuego(
+            @Valid @RequestBody CrearJuegoDTO crearJuegoDTO,
+            Authentication authentication) {
         logger.info("Solicitud para crear nuevo juego");
-        JuegoDTO juego = juegoService.crearJuego(crearJuegoDTO);
+        JuegoDTO juego = juegoService.crearJuego(crearJuegoDTO, authentication.getName());
         GameResponseDTO respuesta = convertirAGameResponse(juego);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
@@ -50,9 +53,9 @@ public class JuegoController {
      * GET /api/juego/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<GameResponseDTO> obtenerJuego(@PathVariable String id) {
+    public ResponseEntity<GameResponseDTO> obtenerJuego(@PathVariable String id, Authentication authentication) {
         logger.info("Solicitud para obtener juego: {}", id);
-        JuegoDTO juego = juegoService.obtenerJuego(id);
+        JuegoDTO juego = juegoService.obtenerJuego(id, authentication.getName());
         GameResponseDTO respuesta = convertirAGameResponse(juego);
         return ResponseEntity.ok(respuesta);
     }
@@ -64,10 +67,11 @@ public class JuegoController {
     @PostMapping("/{id}/movimiento")
     public ResponseEntity<GameResponseDTO> realizarMovimiento(
             @PathVariable String id, 
-            @Valid @RequestBody MovimientoDTO movimiento) {
+            @Valid @RequestBody MovimientoDTO movimiento,
+            Authentication authentication) {
         logger.info("Solicitud de movimiento en juego {}: [{},{}]", 
                    id, movimiento.getRow(), movimiento.getCol());
-        JuegoDTO juego = juegoService.realizarMovimiento(id, movimiento);
+        JuegoDTO juego = juegoService.realizarMovimiento(id, movimiento, authentication.getName());
         GameResponseDTO respuesta = convertirAGameResponse(juego);
         return ResponseEntity.ok(respuesta);
     }
@@ -77,9 +81,9 @@ public class JuegoController {
      * GET /api/juego/todos
      */
     @GetMapping("/todos")
-    public ResponseEntity<List<GameResponseDTO>> obtenerTodosLosJuegos() {
+    public ResponseEntity<List<GameResponseDTO>> obtenerTodosLosJuegos(Authentication authentication) {
         logger.info("Solicitud para obtener todos los juegos");
-        List<JuegoDTO> juegos = juegoService.obtenerTodosLosJuegos();
+        List<JuegoDTO> juegos = juegoService.obtenerTodosLosJuegos(authentication.getName());
         List<GameResponseDTO> respuestas = juegos.stream()
                 .map(this::convertirAGameResponse)
                 .collect(Collectors.toList());
@@ -91,9 +95,9 @@ public class JuegoController {
      * DELETE /api/juego/{id}
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, String>> eliminarJuego(@PathVariable String id) {
+    public ResponseEntity<Map<String, String>> eliminarJuego(@PathVariable String id, Authentication authentication) {
         logger.info("Solicitud para eliminar juego: {}", id);
-        juegoService.eliminarJuego(id);
+        juegoService.eliminarJuego(id, authentication.getName());
         Map<String, String> respuesta = new HashMap<>();
         respuesta.put("message", "Juego eliminado exitosamente");
         return ResponseEntity.ok(respuesta);
@@ -125,6 +129,8 @@ public class JuegoController {
         gameDTO.setScore(juegoDTO.getPuntajes());
         gameDTO.setValidMoves(juegoDTO.getMovimientosValidos());
         gameDTO.setVersion(juegoDTO.getVersion());
+        gameDTO.setMessage(juegoDTO.getMensajeEstado());
+        gameDTO.setIsGameOver(juegoDTO.getEstado() != com.othello.model.EstadoJuego.ACTIVE);
         
         return new GameResponseDTO(gameDTO);
     }

@@ -24,6 +24,7 @@ public class Juego {
     private Long version;
     private Integer passCount;
     private String winner;
+    private String ownerUsername;
 
     public Juego(Jugador jugador1, Jugador jugador2) {
         this.id = UUID.randomUUID().toString();
@@ -34,7 +35,7 @@ public class Juego {
         this.estado = EstadoJuego.ACTIVE;
         this.fechaCreacion = LocalDateTime.now();
         this.fechaUltimoMovimiento = LocalDateTime.now();
-        this.mensajeEstado = "Juego iniciado";
+        this.mensajeEstado = "Black moves first.";
         this.version = 0L;
         this.passCount = 0;
         this.winner = null;
@@ -148,11 +149,19 @@ public class Juego {
         this.winner = winner;
     }
 
+    public String getOwnerUsername() {
+        return ownerUsername;
+    }
+
+    public void setOwnerUsername(String ownerUsername) {
+        this.ownerUsername = ownerUsername;
+    }
+
     /**
      * Cambia el turno al siguiente jugador.
      */
     public void cambiarTurno() {
-        this.turnoActual = (turnoActual == jugador1) ? jugador2 : jugador1;
+        this.turnoActual = turnoActual.getColor() == jugador1.getColor() ? jugador2 : jugador1;
         this.fechaUltimoMovimiento = LocalDateTime.now();
         this.incrementarVersion();
     }
@@ -161,7 +170,7 @@ public class Juego {
      * Obtiene el jugador contrario al turno actual.
      */
     public Jugador getJugadorContrario() {
-        return (turnoActual == jugador1) ? jugador2 : jugador1;
+        return turnoActual.getColor() == jugador1.getColor() ? jugador2 : jugador1;
     }
 
     /**
@@ -182,18 +191,18 @@ public class Juego {
         if (jugador1.getPuntaje() > jugador2.getPuntaje()) {
             this.estado = EstadoJuego.FINISHED;
             this.winner = jugador1.getNombre();
-            this.mensajeEstado = "¡" + jugador1.getNombre() + " ha ganado con " + 
-                                 jugador1.getPuntaje() + " fichas!";
+            this.mensajeEstado = jugador1.getNombre() + " wins with " +
+                                 jugador1.getPuntaje() + " discs.";
         } else if (jugador2.getPuntaje() > jugador1.getPuntaje()) {
             this.estado = EstadoJuego.FINISHED;
             this.winner = jugador2.getNombre();
-            this.mensajeEstado = "¡" + jugador2.getNombre() + " ha ganado con " + 
-                                 jugador2.getPuntaje() + " fichas!";
+            this.mensajeEstado = jugador2.getNombre() + " wins with " +
+                                 jugador2.getPuntaje() + " discs.";
         } else {
             this.estado = EstadoJuego.DRAW;
             this.winner = null;
-            this.mensajeEstado = "¡Empate! Ambos jugadores tienen " + 
-                                 jugador1.getPuntaje() + " fichas";
+            this.mensajeEstado = "Draw. Both players have " +
+                                 jugador1.getPuntaje() + " discs.";
         }
     }
 }

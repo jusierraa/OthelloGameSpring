@@ -16,27 +16,27 @@ public interface IJuegoService {
     /**
      * Crea una nueva partida.
      */
-    JuegoDTO crearJuego(CrearJuegoDTO crearJuegoDTO);
+    JuegoDTO crearJuego(CrearJuegoDTO crearJuegoDTO, String ownerUsername);
     
     /**
      * Obtiene el estado actual de un juego.
      */
-    JuegoDTO obtenerJuego(String juegoId);
+    JuegoDTO obtenerJuego(String juegoId, String ownerUsername);
     
     /**
      * Realiza un movimiento en el juego.
      */
-    JuegoDTO realizarMovimiento(String juegoId, MovimientoDTO movimiento);
+    JuegoDTO realizarMovimiento(String juegoId, MovimientoDTO movimiento, String ownerUsername);
     
     /**
      * Obtiene todos los juegos activos.
      */
-    List<JuegoDTO> obtenerTodosLosJuegos();
+    List<JuegoDTO> obtenerTodosLosJuegos(String ownerUsername);
     
     /**
      * Elimina un juego.
      */
-    void eliminarJuego(String juegoId);
+    void eliminarJuego(String juegoId, String ownerUsername);
     
     /**
      * Convierte un objeto Juego a JuegoDTO.
